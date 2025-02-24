@@ -41,9 +41,10 @@ pub struct Fisheye4Parameters {
 }
 
 /// Safe wrapper around camera parameters and configuration
+#[allow(unused)]
 pub struct Camera {
-    parameters: Vec<f32>,
-    distortion_model: CString,
+    _parameters: Vec<f32>,
+    _distortion_model: CString,
     inner: CUVSLAM_Camera,
 }
 
@@ -72,8 +73,8 @@ impl Camera {
         };
 
         Self {
-            parameters,
-            distortion_model,
+            _parameters: parameters,
+            _distortion_model: distortion_model,
             inner,
         }
     }
@@ -100,8 +101,8 @@ impl Camera {
         };
 
         Self {
-            parameters,
-            distortion_model,
+            _parameters: parameters,
+            _distortion_model: distortion_model,
             inner,
         }
     }
@@ -130,8 +131,8 @@ impl Camera {
         };
 
         Self {
-            parameters,
-            distortion_model,
+            _parameters: parameters,
+            _distortion_model: distortion_model,
             inner,
         }
     }
