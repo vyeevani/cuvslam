@@ -5,14 +5,18 @@ use cuvslam::{
 use realsense_rust::{
     config::Config,
     context,
-    kind::{Rs2CameraInfo, Rs2Format, Rs2StreamKind},
+    kind::{Rs2CameraInfo, Rs2Format, Rs2StreamKind, Rs2Option},
     pipeline,
     frame,
 };
 use std::{hash::Hash, time::{Duration, SystemTime, UNIX_EPOCH}};
 use std::collections::HashSet;
+use rerun::{self, LoggableBatch};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize Rerun for visualization
+    let rec = rerun::RecordingStreamBuilder::new("CUVSLAM RealSense Tracker").spawn()?;
+    
     // Initialize RealSense
     let ctx = context::Context::new()?;
     let pipeline = pipeline::InactivePipeline::try_from(&ctx)?;
@@ -20,20 +24,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Print all active streams in the context
     for device in ctx.query_devices(HashSet::new()) {
         println!("Device: {}", device.info(Rs2CameraInfo::Name).map(|s| s.to_string_lossy()).unwrap_or_default());
-        for sensor in device.sensors() {
+        println!("Number of sensors: {}", device.sensors().len());
+        for mut sensor in device.sensors() {
             println!("  Sensor: {}", sensor.info(Rs2CameraInfo::Name).map(|s| s.to_string_lossy()).unwrap_or_default());
-            /*
-            for stream_profile in sensor.stream_profiles() {
-                println!(
-                    "    Stream: {:?}, Format: {:?}, Width: {}, Height: {}, FPS: {}",
-                    stream_profile.stream_kind(),
-                    stream_profile.format(),
-                    stream_profile.width(),
-                    stream_profile.height(),
-                    stream_profile.fps()
-                );
+            if let Err(e) = sensor.set_option(Rs2Option::EmitterEnabled, 0.) {
+                println!("Unable to set option EmitterOnOff: {}", e);
+            } else {
+                println!("Successfully set option EmitterOnOff");
             }
-            */
         }
     }
     
@@ -75,7 +73,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     println!("Starting SLAM tracking...");
-    
+            
     // Main loop
     loop {
         // Wait for next frame
@@ -102,6 +100,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         match tracker.track(&images, None) {
             Ok(pose_estimate) => {
                 print_pose(&pose_estimate);
+                
+                // Log pose to Rerun
+                let t = &pose_estimate.pose.t;
+                let r = &pose_estimate.pose.r;
+
+                // Convert raw pointer to slice for Rerun
+                let width = images[0].width as usize;
+                let height = images[0].height as usize;
+                let image_data = unsafe { 
+                    std::slice::from_raw_parts(images[0].pixels, width * height)
+                };
+                
+                rec.log("camera_image", &rerun::Image::new(image_data, rerun::ImageFormat::from_color_model([640, 480], rerun::ColorModel::L, rerun::ChannelDatatype::U8)))?;
+                
+                rec.log("camera_translation", &rerun::Transform3D::from_translation(rerun::Vec3D::new(t[0], t[1], t[2])))?;             
+                /*
+                rec.log(
+                    "camera", 
+                    &rerun::Transform3D::from_translation_rotation(
+                        rerun::Vec3D::new(t[0], t[1], t[2]), 
+                        rerun::Rotation3D::Quaternion(rerun::Quaternion::from_xyzw([r[0], r[1], r[2], r[3]]).into())
+                    )
+                )?;
+                */
             }
             Err(Status::TrackingLost) => {
                 println!("Tracking lost!");
