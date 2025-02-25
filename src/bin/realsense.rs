@@ -114,8 +114,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 
                 rec.log("camera_image", &rerun::Image::new(image_data, rerun::ImageFormat::from_color_model([640, 480], rerun::ColorModel::L, rerun::ChannelDatatype::U8)))?;
                 
-                rec.log("camera_translation", &rerun::Transform3D::from_translation(rerun::Vec3D::new(t[0], t[1], t[2])))?;             
-                /*
+                // rec.log("camera_translation", &rerun::Transform3D::from_translation(rerun::Vec3D::new(t[0], t[1], t[2])))?;             
+                
                 rec.log(
                     "camera", 
                     &rerun::Transform3D::from_translation_rotation(
@@ -123,7 +123,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         rerun::Rotation3D::Quaternion(rerun::Quaternion::from_xyzw([r[0], r[1], r[2], r[3]]).into())
                     )
                 )?;
-                */
+                
             }
             Err(Status::TrackingLost) => {
                 println!("Tracking lost!");
